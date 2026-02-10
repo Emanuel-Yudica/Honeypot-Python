@@ -2,7 +2,6 @@ import asyncio
 import socket
 import paramiko
 from datetime import datetime
-import re
 HOST_KEY = paramiko.RSAKey(filename="server.key")
 
 
@@ -43,7 +42,7 @@ def handle_client_blocking(client, addr, q):
         transport.close()
         client.close()
 
-async def main(q):
+async def run_ssh_server(q):
     loop = asyncio.get_running_loop()
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
