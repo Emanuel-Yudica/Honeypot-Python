@@ -1,12 +1,19 @@
 from aiohttp import web
 from datetime import datetime
 import asyncio
+import redis
+r = redis.Redis(host="localhost", port=6379, db=0)
 async def handler(request):
+    
+    ip = request.remote
+
+    
     q = request.app["queue"]
 
     event = {
         "server": "HTTP",
-        "time": datetime.now().isoformat(),
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "time": datetime.now().strftime("%H:%M:%S"),
         "ip": request.remote,
         "method": request.method,
         "path": request.path,
@@ -16,6 +23,15 @@ async def handler(request):
     }
 
     q.put(event)
+    # verificar si está bloqueada
+    if r.exists(f"blocked:{ip}"):
+
+        print(f"[BLOCKED] Intento de acceso de {ip}")
+
+        return web.Response(
+            status=403,
+            text="Forbidden"
+        )
     return web.Response(status=200)
 
 async def run_http_server(q):
@@ -26,10 +42,10 @@ async def run_http_server(q):
     runner = web.AppRunner(app)
     await runner.setup()
 
-    site = web.TCPSite(runner, "0.0.0.0", 80)
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
     await site.start()
 
-    print("[+] HTTP honeypot escuchando en 80")
+    print("[+] HTTP honeypot escuchando en 8080")
 
     # mantiene vivo el loop
     while True:

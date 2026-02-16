@@ -1,9 +1,10 @@
 import asyncio
 import socket
 import paramiko
+import redis
 from datetime import datetime
 HOST_KEY = paramiko.RSAKey(filename="server.key")
-
+r=redis.Redis(host="localhost", port=6379, db=0)
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self, client_ip,q):
@@ -11,14 +12,13 @@ class SSHServer(paramiko.ServerInterface):
         self.q=q
 
     def check_auth_password(self, username, password):
-        time=datetime.now()
-        formatted_time=time.strftime("%Y-%m-%d %H:%M:%S")
         self.q.put({
                 "server": "SSH",
                 "ip": self.client_ip,
                 "user": username,
                 "password": password,
-                "time": formatted_time
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "time": datetime.now().strftime("%H:%M:%S"),
             })
 
         return paramiko.AUTH_FAILED
@@ -27,17 +27,22 @@ class SSHServer(paramiko.ServerInterface):
         return "password"
 
 def handle_client_blocking(client, addr, q):
+    ip=addr[0]
+    if r.exists(f"blocked:{ip}"):
+        print(f"[BLOCKED SSH] {ip}")
+        client.close()
+        return
     transport = paramiko.Transport(client)
     transport.add_server_key(HOST_KEY)
 
-    server = SSHServer(addr[0], q)
+    server = SSHServer(ip, q)
 
     try:
         transport.start_server(server=server)
         while transport.is_active():
             pass
     except Exception as e:
-        print(f"[!] Error con {addr[0]}: {e}")
+        print(f"[!] Error con {ip}: {e}")
     finally:
         transport.close()
         client.close()
