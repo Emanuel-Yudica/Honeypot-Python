@@ -23,15 +23,21 @@ async def handler(request):
     }
 
     q.put(event)
-    # verificar si está bloqueada
     if r.exists(f"blocked:{ip}"):
 
-        print(f"[BLOCKED] Intento de acceso de {ip}")
+    # solo loguea una vez por servicio
+        if r.setnx(f"blocked_logged:http:{ip}", 1):
+
+            print(f"[BLOCKED HTTP] {ip}")
+
+            # expira igual que el bloqueo (10 min)
+            r.expire(f"blocked_logged:http:{ip}", 600)
 
         return web.Response(
             status=403,
             text="Forbidden"
         )
+
     return web.Response(status=200)
 
 async def run_http_server(q):

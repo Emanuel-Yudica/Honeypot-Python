@@ -27,11 +27,20 @@ class SSHServer(paramiko.ServerInterface):
         return "password"
 
 def handle_client_blocking(client, addr, q):
-    ip=addr[0]
+
+    ip = addr[0]
+
     if r.exists(f"blocked:{ip}"):
-        print(f"[BLOCKED SSH] {ip}")
+
+        if r.setnx(f"blocked_logged:ssh:{ip}", 1):
+
+            print(f"[BLOCKED SSH] {ip}")
+
+            r.expire(f"blocked_logged:ssh:{ip}", 600)
+
         client.close()
         return
+
     transport = paramiko.Transport(client)
     transport.add_server_key(HOST_KEY)
 
@@ -39,13 +48,17 @@ def handle_client_blocking(client, addr, q):
 
     try:
         transport.start_server(server=server)
+
         while transport.is_active():
             pass
+
     except Exception as e:
         print(f"[!] Error con {ip}: {e}")
+
     finally:
         transport.close()
         client.close()
+
 
 async def run_ssh_server(q):
     loop = asyncio.get_running_loop()

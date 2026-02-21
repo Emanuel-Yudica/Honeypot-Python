@@ -1,6 +1,6 @@
 from multiprocessing import Process, Queue
 import os
-from celery_worker.watcher import watch
+#from celery_worker.watcher import watch
 # from servers.ssh_server import run_ssh_server
 # from servers.http_server import run_http_server
 from ssh_server import run_ssh_server
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     http.start()
     parser_proc.start()
     #watcher_ssh_proc.start()
-    watcher_proc.start() # esto no funciona
+    watcher_proc.start()
 
     ssh.join()
     http.join()
     parser_proc.join()
-    watcher_proc.join() # esto no funciona
+    watcher_proc.join() 
     #watcher_http_proc.join()

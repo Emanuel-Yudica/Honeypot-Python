@@ -7,6 +7,7 @@
 #     pass
 from celery_app.app import app
 import redis
+from .send_mail import send_email
 r = redis.Redis(host="localhost", port=6379, db=0)
 TIEMPO=30
 TOLERANCIA=100
@@ -31,8 +32,16 @@ def process_event(event):
 
     if count > TOLERANCIA:
         r.set(f"blocked:{ip}", 1)
-        r.expire("blocked:ip", 600) # expira en 10 minutos el bloqueo
-
-
+        r.expire(f"blocked:{ip}", 600) # expira en 10 minutos el bloqueo
+        event_blocked_count = r.incr(f"blocked_in_hour:{ip}")
+        if event_blocked_count == 1:
+            r.expire(f"blocked:{ip}", 3600)
+        if event_blocked_count ==5:
+            
+            send_email(
+                subject="Alerta de seguridad",
+                body=f"La IP {ip} ha sido bloqueada 5 veces en la ultima hora",
+                recipients=["emanuelyudica2@gmail.com"],
+            )
     return count
 
