@@ -63,9 +63,7 @@ def handle_client_blocking(client, addr, q):
 async def run_ssh_server(q):
     loop = asyncio.get_running_loop()
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(("0.0.0.0", 2222))
+    server = socket.create_server(("0.0.0.0", 2222),family=socket.AF_INET6,dualstack_ipv6=True,reuse_port=True)
     server.listen()
     server.setblocking(False)
 
