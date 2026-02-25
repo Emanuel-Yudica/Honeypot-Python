@@ -27,34 +27,24 @@ class SSHServer(paramiko.ServerInterface):
         return "password"
 
 def handle_client_blocking(client, addr, q):
-
     ip = addr[0]
-
-    if r.exists(f"blocked:{ip}"):
-
-        if r.setnx(f"blocked_logged:ssh:{ip}", 1):
-
-            print(f"[BLOCKED SSH] {ip}")
-
-            r.expire(f"blocked_logged:ssh:{ip}", 600)
-
-        client.close()
-        return
+    
+    # Aunque quites tu lógica de Redis, esta línea es VITAL para Paramiko
+    client.setblocking(True) 
 
     transport = paramiko.Transport(client)
     transport.add_server_key(HOST_KEY)
-
+    
+    # Tu clase SSHServer que mete datos en la Queue
     server = SSHServer(ip, q)
 
     try:
         transport.start_server(server=server)
-
-        while transport.is_active():
-            pass
-
+        # Esperamos a que la autenticación ocurra (o falle)
+        # .join() bloquea este hilo del executor hasta que el cliente se desconecte
+        transport.join() 
     except Exception as e:
         print(f"[!] Error con {ip}: {e}")
-
     finally:
         transport.close()
         client.close()
@@ -63,7 +53,9 @@ def handle_client_blocking(client, addr, q):
 async def run_ssh_server(q):
     loop = asyncio.get_running_loop()
 
-    server = socket.create_server(("0.0.0.0", 2222),family=socket.AF_INET6,dualstack_ipv6=True,reuse_port=True)
+    server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    server.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+    server.bind(("::", 2222))
     server.listen()
     server.setblocking(False)
 

@@ -48,7 +48,7 @@ async def run_http_server(q):
     runner = web.AppRunner(app)
     await runner.setup()
 
-    site = web.TCPSite(runner, "::", 8080)
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
     await site.start()
 
     print("[+] HTTP honeypot escuchando en 8080")
