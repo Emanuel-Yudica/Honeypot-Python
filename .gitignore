@@ -1,1 +1,7 @@
 .env
+*.json
+*.html
+__pycache__/
+server.key
+server.key.pub
+*.rdb

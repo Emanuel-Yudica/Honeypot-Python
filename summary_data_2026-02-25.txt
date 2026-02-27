@@ -1,7 +1,0 @@
-Se deja un resumen de las top 10 credenciales y 15 rutas más utilizadas en el honeypot.
-
-SSH:
-{}
-
-HTTP:
-{'/admin': 5}

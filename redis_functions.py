@@ -1,6 +1,9 @@
+import os
 import redis
-
-r = redis.Redis(host="localhost", port=6379, decode_responses=True)
+import datetime
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 def redis_get_keys(ssh_quantity=1, http_quantity=1):
     try:
@@ -47,3 +50,27 @@ def redis_get_keys(ssh_quantity=1, http_quantity=1):
         return top_ssh, top_http
     except Exception as e:
         print(f"Error al leer Redis: {e}")
+
+def ip_connection_watcher():
+    """Escucha el canal de Redis e imprime las conexiones al instante"""
+    # Importante: decode_responses=True para leer texto directamente
+    local_redis = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+    pubsub = local_redis.pubsub()
+    
+    # Nos suscribimos al canal donde el worker hace el r.publish
+    pubsub.subscribe("canal_ips")
+    
+    print("\nEsperando conexiones...")
+    ips_vistas = set()
+    try:
+        for message in pubsub.listen():
+            if message['type'] == 'message':
+                data = message['data'] 
+                ip = data.split(" -> ")[1]
+                if ip not in ips_vistas:
+                    hora = datetime.datetime.now().strftime("%H:%M:%S")
+                    print(f"[{hora}] [NUEVA CONEXIÓN] -> {data}")
+                    ips_vistas.add(ip)
+    except KeyboardInterrupt:
+        print("\n[!] Watcher detenido.")
+        return
