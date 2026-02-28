@@ -65,35 +65,47 @@ def handle_client_blocking(client, addr, q):
 async def run_ssh_server(q):
     loop = asyncio.get_running_loop()
     SSH_PORT = int(os.getenv("SSH_PORT", 2222))
+    
+    # 1. Crear Socket para IPv4
+    sock_v4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_v4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock_v4.bind(("0.0.0.0", SSH_PORT))
+    sock_v4.listen()
+    sock_v4.setblocking(False)
 
-    # Intentar configurar un único socket Dual Stack (IPv6 + IPv4)
+    # 2. Crear Socket para IPv6
     try:
-        server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # IPV6_V6ONLY = 0 permite recibir IPv4 en este mismo socket
-        server.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        server.bind(("::", SSH_PORT))
-        server.listen()
-        server.setblocking(False)
-        print(f"[+] SSH Honeypot Dual-Stack escuchando en puerto {SSH_PORT} (IPv4/IPv6)")
+        sock_v6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        sock_v6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Forzamos que este socket SOLO escuche IPv6
+        sock_v6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+        sock_v6.bind(("::", SSH_PORT))
+        sock_v6.listen()
+        sock_v6.setblocking(False)
+        print(f"[+] SSH escuchando en IPv6 ([::]:{SSH_PORT})")
     except Exception as e:
-        print(f"[!] Error creando socket Dual-Stack: {e}")
-        # Si falla el dual-stack, podrías reintentar solo con IPv4 aquí
-        return
+        sock_v6 = None
+        print(f"[!] No se pudo iniciar IPv6 para SSH: {e}")
 
-    while True:
-        # Aceptar conexiones de forma sencilla
-        client, addr = await loop.sock_accept(server)
-        
-        # Ejecutar el manejo bloqueante de Paramiko en un hilo aparte
-        loop.run_in_executor(
-            None,
-            handle_client_blocking,
-            client,
-            addr,
-            q
-        )
+    print(f"[+] SSH escuchando en IPv4 (0.0.0.0:{SSH_PORT})")
 
+    # Función interna para aceptar conexiones
+    async def accept_connections(sock):
+        while True:
+            client, addr = await loop.sock_accept(sock)
+            # Al ser independientes, addr[0] vendrá como "127.0.0.1" o "::1" sin prefijos
+            loop.run_in_executor(
+                None,
+                handle_client_blocking,
+                client,
+                addr,
+                q
+            )
 
+    # Creamos las tareas para ambos sockets
+    tasks = [accept_connections(sock_v4)]
+    if sock_v6:
+        tasks.append(accept_connections(sock_v6))
 
-# asyncio.run(main())
+    # Ejecutamos ambas tareas en paralelo
+    await asyncio.gather(*tasks)
