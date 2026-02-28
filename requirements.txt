@@ -1,0 +1,6 @@
+paramiko
+redis
+celery
+watchdog
+aiohttp
+python-dotenv
