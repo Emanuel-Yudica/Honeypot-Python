@@ -42,7 +42,6 @@ async def run_http_server(q):
 
     HTTP_PORT = int(os.getenv("HTTP_PORT", 8080))
 
-    # Definimos los dos sitios: uno para IPv4 y otro para IPv6
     site_v4 = web.TCPSite(runner, "0.0.0.0", HTTP_PORT)
     site_v6 = web.TCPSite(runner, "::", HTTP_PORT)
     

@@ -3,7 +3,6 @@ import redis
 import asyncio
 import signal
 import sys
-import multiprocessing
 from multiprocessing import Process, Queue
 
 from ssh_server import run_ssh_server
@@ -16,6 +15,9 @@ import argparse
 from send_summary import send_email
 import datetime
 from send_summary import *
+
+
+
 # --- Conexión a Redis ---
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
@@ -29,7 +31,7 @@ arg_parser.add_argument('--ssh', type=int, default=5,
 arg_parser.add_argument('--http', type=int, default=5,
                         help='Number of top http requests to show (default 5).')
 arg_parser.add_argument('--email', type=str,help='Email address to send summary (not required)')
-arg_parser.add_argument('--filename', type=str,help='Filename to save summary (not required)')
+arg_parser.add_argument('--filename', type=str,help='Filename to save summary .html (not required)')
 args = arg_parser.parse_args()
 
 
@@ -64,16 +66,15 @@ def main(processes):
         end_time=end_time
     )
     if args.email:    
-        send_mail=input("¿Desea enviar un correo con los datos obtenidos? (S/N): ")
-    else:
-        send_mail="N"
-    if send_mail.lower() == "s":
-
-        send_email(
-            subject="Resumen de actividad de la sesion del honeypot",
-            recipients=args.email,
-            html_body=html_reporte
-        )
+        send_mail=input("¿Desea enviar el reporte por email? (S/N)")
+        if send_mail.lower()=="s":
+            send_email(
+                subject="Resumen de actividad de la sesion del honeypot",
+                recipients=args.email,
+                html_body=html_reporte
+            )
+        else:
+            save_to_html_file(html_reporte,args.filename)
     else:
         save_to_html_file(html_reporte,args.filename)
         

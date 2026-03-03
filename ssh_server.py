@@ -66,14 +66,12 @@ async def run_ssh_server(q):
     loop = asyncio.get_running_loop()
     SSH_PORT = int(os.getenv("SSH_PORT", 2222))
     
-    # 1. Crear Socket para IPv4
     sock_v4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock_v4.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock_v4.bind(("0.0.0.0", SSH_PORT))
     sock_v4.listen()
     sock_v4.setblocking(False)
 
-    # 2. Crear Socket para IPv6
     try:
         sock_v6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         sock_v6.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

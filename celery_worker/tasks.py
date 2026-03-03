@@ -26,6 +26,9 @@ def process_event(event):
         print(f"IP: {ip}")
         # Normalizar si viene de IPv6 dual-stack
         clean_ip = ip.replace("::ffff:", "") if ip.startswith("::ffff:") else ip
+       
+       
+       
         r.sadd("ips", clean_ip)    # ip = event["ip"]
         r.publish("canal_ips", f"{server} -> {clean_ip}")
 
